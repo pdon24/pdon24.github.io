@@ -61,25 +61,18 @@
         flex: 1;
         display: flex;
         align-items: flex-end;
-        justify-content: space-between;
-        padding: 4px;
+        padding: 3px;
     }
 
     .bar {
         background: #4dd0e1;
-        width: 3px;
-        margin: 0 1px;
+        margin-right: 1px;
         transition: background 0.05s;
+        flex: 1;
     }
 
-    .pivot {
-        background: yellow !important;
-    }
-
-    .compare {
-        background: orange !important;
-    }
-
+    .pivot { background: yellow !important; }
+    .compare { background: orange !important; }
 </style>
 </head>
 <body>
@@ -140,14 +133,17 @@ let leftStart, rightStart;
 let leftDone = false, rightDone = false;
 let leftTime = 0, rightTime = 0;
 
-// Sleep helper
+// sleep helper
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // ------------------------------------------------------
-// BAR RENDERING
+// BAR GENERATION + WIDTH FIX
 // ------------------------------------------------------
 function shuffleBars() {
-    const count = Number(barCount.value);
+    let count = Number(barCount.value);
+    if (count > 200) count = 200;   // ENFORCED 200 LIMIT
+    barCount.value = count;
+
     leftArr = Array.from({ length: count }, () => Math.floor(Math.random() * 300 + 20));
     rightArr = [...leftArr];
 
@@ -162,21 +158,25 @@ function shuffleBars() {
 function drawBars(id, arr) {
     const container = document.getElementById(id);
     container.innerHTML = "";
+
+    const widthPercent = 100 / arr.length;
+
     arr.forEach(v => {
         let b = document.createElement("div");
         b.className = "bar";
         b.style.height = v + "px";
+        b.style.width = widthPercent + "%";  // auto scale
         container.appendChild(b);
     });
 }
 
-// Highlighting update
+// Highlight bars
 async function updateBars(id, arr, pivot=null, compare=null) {
     const bars = document.getElementById(id).children;
 
     for (let i = 0; i < arr.length; i++) {
         bars[i].style.height = arr[i] + "px";
-        bars[i].className = "bar"; // reset
+        bars[i].className = "bar";
     }
 
     if (pivot !== null && bars[pivot]) bars[pivot].classList.add("pivot");
@@ -186,7 +186,7 @@ async function updateBars(id, arr, pivot=null, compare=null) {
 }
 
 // ------------------------------------------------------
-// TIMER & WINNER/LOSER
+// TIMER + WINNER
 // ------------------------------------------------------
 function finishTimer(side) {
     const now = performance.now();
@@ -224,7 +224,6 @@ function checkWinner() {
 // ------------------------------------------------------
 // SORTING ALGORITHMS
 // ------------------------------------------------------
-
 async function bubbleSort(arr, id, side) {
     let n = arr.length;
     for (let i = 0; i < n; i++)
@@ -318,7 +317,7 @@ async function mergeSort(arr, id, side) {
 }
 
 // ------------------------------------------------------
-// QUICK SORT (Pivot highlighting fixed)
+// FAST QUICKSORT with pivot highlighting
 // ------------------------------------------------------
 async function quickSort(arr, id, side, low=0, high=arr.length-1) {
 
@@ -360,7 +359,7 @@ async function quickSort(arr, id, side, low=0, high=arr.length-1) {
 }
 
 // ------------------------------------------------------
-// START BOTH SORTS
+// START BOTH
 // ------------------------------------------------------
 function startBoth() {
     animationSpeed = Number(speed.value);
@@ -385,9 +384,8 @@ function startBoth() {
     algos[rightAlgo.value](R, "right", "right");
 }
 
-// Initialize
+// initialize
 shuffleBars();
-
 </script>
 </body>
 </html>
