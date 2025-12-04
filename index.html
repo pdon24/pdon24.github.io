@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Dual Sort Visualizer</title>
+<style>
+    body {
+        margin: 0;
+        background: #111;
+        color: white;
+        font-family: Arial;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+    }
+
+    header {
+        padding: 10px;
+        background: #222;
+        display: flex;
+        justify-content: space-evenly;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    select, button, input {
+        padding: 8px;
+        background: #333;
+        color: white;
+        border: 1px solid #666;
+        border-radius: 4px;
+    }
+
+    #container {
+        flex: 1;
+        display: flex;
+        overflow: hidden;
+    }
+
+    .panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        border-right: 2px solid #333;
+    }
+
+    .title {
+        text-align: center;
+        background: #222;
+        padding: 6px;
+        font-size: 18px;
+    }
+
+    .timer {
+        text-align: center;
+        background: #333;
+        padding: 4px;
+        font-size: 16px;
+    }
+
+    .bars {
+        flex: 1;
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        padding: 4px;
+    }
+
+    .bar {
+        background: #4dd0e1;
+        width: 3px;
+        margin: 0 1px;
+    }
+
+    .pivot {
+        background: yellow !important;
+    }
+
+    .compare {
+        background: orange !important;
+    }
+</style>
+</head>
+<body>
+
+<header>
+    <div>
+        Left Sort:
+        <select id="leftAlgo">
+            <option>Bubble Sort</option>
+            <option>Insertion Sort</option>
+            <option>Selection Sort</option>
+            <option>Merge Sort</option>
+            <option>Heap Sort</option>
+            <option>Quick Sort</option>
+        </select>
+    </div>
+
+    <div>
+        Right Sort:
+        <select id="rightAlgo">
+            <option>Quick Sort</option>
+            <option>Bubble Sort</option>
+            <option>Insertion Sort</option>
+            <option>Selection Sort</option>
+            <option>Merge Sort</option>
+            <option>Heap Sort</option>
+        </select>
+    </div>
+
+    <div>BARS: <input id="barCount" type="number" min="10" max="300" value="80"></div>
+    <div>SPEED: <input id="speed" type="number" min="1" max="200" value="10"></div>
+
+    <button onclick="shuffleBars()">Shuffle</button>
+    <button onclick="startBoth()">Start</button>
+</header>
+
+<div id="container">
+    <div class="panel">
+        <div class="title">LEFT</div>
+        <div id="leftTimer" class="timer">0.000s</div>
+        <div id="left" class="bars"></div>
+    </div>
+
+    <div class="panel">
+        <div class="title">RIGHT</div>
+        <div id="rightTimer" class="timer">0.000s</div>
+        <div id="right" class="bars"></div>
+    </div>
+</div>
+
+<script>
+// ------------------------------------------------------
+// GLOBALS
+// ------------------------------------------------------
+let leftArr = [], rightArr = [];
+let animationSpeed = 10;
+let leftStart, rightStart;
+let leftDone = false, rightDone = false;
+let leftTime = 0, rightTime = 0;
+
+// Sleep helper
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+// ------------------------------------------------------
+// BAR RENDERING
+// ------------------------------------------------------
+function shuffleBars() {
+    const count = Number(barCount.value);
+    leftArr = Array.from({ length: count }, () => Math.floor(Math.random() * 300 + 20));
+    rightArr = [...leftArr];
+
+    drawBars("left", leftArr);
+    drawBars("right", rightArr);
+
+    leftDone = rightDone = false;
+    leftTimer.innerText = "0.000s";
+    rightTimer.innerText = "0.000s";
+}
+
+function drawBars(id, arr) {
+    const container = document.getElementById(id);
+    container.innerHTML = "";
+    arr.forEach(v => {
+        let b = document.createElement("div");
+        b.className = "bar";
+        b.style.height = v + "px";
+        container.appendChild(b);
+    });
+}
+
+async function updateBars(id, arr, pivotIndex=null, compareIndex=null) {
+    const bars = document.getElementById(id).children;
+
+    for (let i = 0; i < arr.length; i++) {
+        bars[i].style.height = arr[i] + "px";
+        bars[i].className = "bar";
+    }
+
+    if (pivotIndex !== null && bars[pivotIndex]) bars[pivotIndex].classList.add("pivot");
+    if (compareIndex !== null && bars[compareIndex]) bars[compareIndex].classList.add("compare");
+
+    await sleep(animationSpeed);
+}
+
+// ------------------------------------------------------
+// TIMER & WIN/LOSE MARKING
+// ------------------------------------------------------
+function finishTimer(side) {
+    const now = performance.now();
+    if (side === "left") {
+        leftTime = (now - leftStart) / 1000;
+        leftDone = true;
+        leftTimer.innerText = leftTime.toFixed(3) + "s";
+    } else {
+        rightTime = (now - rightStart) / 1000;
+        rightDone = true;
+        rightTimer.innerText = rightTime.toFixed(3) + "s";
+    }
+
+    checkWinner();
+}
+
+function colorAll(id, color) {
+    const bars = document.getElementById(id).children;
+    [...bars].forEach(b => b.style.background = color);
+}
+
+function checkWinner() {
+    if (!leftDone || !rightDone) return;
+
+    if (leftTime < rightTime) {
+        colorAll("left", "green");
+        colorAll("right", "red");
+    } else {
+        colorAll("left", "red");
+        colorAll("right", "green");
+    }
+}
+
+// ------------------------------------------------------
+// SORTING ALGORITHMS
+// ------------------------------------------------------
+
+// Bubble Sort
+async function bubbleSort(arr, id, side) {
+    let n = arr.length;
+    for (let i = 0; i < n; i++)
+        for (let j = 0; j < n - i - 1; j++)
+            if (arr[j] > arr[j + 1]) {
+                [arr[j], arr[j + 1]] = [arr[j + 1], arr[j]];
+                await updateBars(id, arr, null, j);
+            }
+    finishTimer(side);
+}
+
+// Insertion Sort
+async function insertionSort(arr, id, side) {
+    for (let i = 1; i < arr.length; i++) {
+        let key = arr[i], j = i - 1;
+        while (j >= 0 && arr[j] > key) {
+            arr[j + 1] = arr[j];
+            j--;
+            await updateBars(id, arr, null, j);
+        }
+        arr[j + 1] = key;
+        await updateBars(id, arr);
+    }
+    finishTimer(side);
+}
+
+// Selection Sort
+async function selectionSort(arr, id, side) {
+    for (let i = 0; i < arr.length; i++) {
+        let min = i;
+        for (let j = i + 1; j < arr.length; j++)
+            if (arr[j] < arr[min]) min = j;
+
+        [arr[i], arr[min]] = [arr[min], arr[i]];
+        await updateBars(id, arr, null, i);
+    }
+    finishTimer(side);
+}
+
+// Heap Sort
+async function heapSort(arr, id, side) {
+
+    async function heapify(n, i) {
+        let largest = i;
+        let L = 2*i + 1;
+        let R = 2*i + 2;
+
+        if (L < n && arr[L] > arr[largest]) largest = L;
+        if (R < n && arr[R] > arr[largest]) largest = R;
+
+        if (largest != i) {
+            [arr[i], arr[largest]] = [arr[largest], arr[i]];
+            await updateBars(id, arr, null, i);
+            await heapify(n, largest);
+        }
+    }
+
+    let n = arr.length;
+    for (let i = Math.floor(n/2)-1; i >= 0; i--) await heapify(n, i);
+
+    for (let i = n-1; i > 0; i--) {
+        [arr[0], arr[i]] = [arr[i], arr[0]];
+        await updateBars(id, arr, 0, i);
+        await heapify(i, 0);
+    }
+
+    finishTimer(side);
+}
+
+// Merge Sort
+async function mergeSort(arr, id, side) {
+
+    async function sortRange(start, end) {
+        if (end - start <= 1) return;
+
+        let mid = Math.floor((start+end)/2);
+        await sortRange(start, mid);
+        await sortRange(mid, end);
+
+        let left = arr.slice(start, mid);
+        let right = arr.slice(mid, end);
+
+        let i=0, j=0, k=start;
+
+        while (i < left.length && j < right.length) {
+            arr[k++] = left[i] < right[j] ? left[i++] : right[j++];
+            await updateBars(id, arr);
+        }
+        while (i < left.length) { arr[k++] = left[i++]; await updateBars(id, arr); }
+        while (j < right.length) { arr[k++] = right[j++]; await updateBars(id, arr); }
+    }
+
+    await sortRange(0, arr.length);
+    finishTimer(side);
+}
+
+// Quick Sort with pivot highlighting
+async function quickSort(arr, id, side, low=0, high=arr.length-1) {
+    if (low >= high) { 
+        if (low === 0 && high === arr.length-1) finishTimer(side);
+        return; 
+    }
+
+    let pivotIndex = Math.floor((low+high)/2);
+    let pivot = arr[pivotIndex];
+
+    let i = low, j = high;
+
+    while (i <= j) {
+
+        while (arr[i] < pivot) {
+            await updateBars(id, arr, pivotIndex, i);
+            i++;
+        }
+
+        while (arr[j] > pivot) {
+            await updateBars(id, arr, pivotIndex, j);
+            j--;
+        }
+
+        if (i <= j) {
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+            await updateBars(id, arr, pivotIndex, i);
+            i++;
+            j--;
+        }
+    }
+
+    await quickSort(arr, id, side, low, j);
+    await quickSort(arr, id, side, i, high);
+
+    if (low === 0 && high === arr.length-1)
+        finishTimer(side);
+}
+
+// ------------------------------------------------------
+// RUN BOTH SORTS
+// ------------------------------------------------------
+function startBoth() {
+    animationSpeed = Number(speed.value);
+    leftDone = rightDone = false;
+
+    leftStart = performance.now();
+    rightStart = performance.now();
+
+    let L = [...leftArr];
+    let R = [...rightArr];
+
+    const algos = {
+        "Bubble Sort": bubbleSort,
+        "Insertion Sort": insertionSort,
+        "Selection Sort": selectionSort,
+        "Merge Sort": mergeSort,
+        "Heap Sort": heapSort,
+        "Quick Sort": quickSort
+    };
+
+    algos[leftAlgo.value](L, "left", "left");
+    algos[rightAlgo.value](R, "right", "right");
+}
+
+shuffleBars();
+</script>
+
+</body>
+</html>
