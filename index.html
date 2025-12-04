@@ -69,6 +69,7 @@
         background: #4dd0e1;
         width: 3px;
         margin: 0 1px;
+        transition: background 0.05s;
     }
 
     .pivot {
@@ -78,6 +79,7 @@
     .compare {
         background: orange !important;
     }
+
 </style>
 </head>
 <body>
@@ -107,7 +109,7 @@
         </select>
     </div>
 
-    <div>BARS: <input id="barCount" type="number" min="10" max="300" value="80"></div>
+    <div>BARS: <input id="barCount" type="number" min="10" max="200" value="80"></div>
     <div>SPEED: <input id="speed" type="number" min="1" max="200" value="10"></div>
 
     <button onclick="shuffleBars()">Shuffle</button>
@@ -168,25 +170,27 @@ function drawBars(id, arr) {
     });
 }
 
-async function updateBars(id, arr, pivotIndex=null, compareIndex=null) {
+// Highlighting update
+async function updateBars(id, arr, pivot=null, compare=null) {
     const bars = document.getElementById(id).children;
 
     for (let i = 0; i < arr.length; i++) {
         bars[i].style.height = arr[i] + "px";
-        bars[i].className = "bar";
+        bars[i].className = "bar"; // reset
     }
 
-    if (pivotIndex !== null && bars[pivotIndex]) bars[pivotIndex].classList.add("pivot");
-    if (compareIndex !== null && bars[compareIndex]) bars[compareIndex].classList.add("compare");
+    if (pivot !== null && bars[pivot]) bars[pivot].classList.add("pivot");
+    if (compare !== null && bars[compare]) bars[compare].classList.add("compare");
 
     await sleep(animationSpeed);
 }
 
 // ------------------------------------------------------
-// TIMER & WIN/LOSE MARKING
+// TIMER & WINNER/LOSER
 // ------------------------------------------------------
 function finishTimer(side) {
     const now = performance.now();
+
     if (side === "left") {
         leftTime = (now - leftStart) / 1000;
         leftDone = true;
@@ -221,7 +225,6 @@ function checkWinner() {
 // SORTING ALGORITHMS
 // ------------------------------------------------------
 
-// Bubble Sort
 async function bubbleSort(arr, id, side) {
     let n = arr.length;
     for (let i = 0; i < n; i++)
@@ -233,7 +236,6 @@ async function bubbleSort(arr, id, side) {
     finishTimer(side);
 }
 
-// Insertion Sort
 async function insertionSort(arr, id, side) {
     for (let i = 1; i < arr.length; i++) {
         let key = arr[i], j = i - 1;
@@ -248,7 +250,6 @@ async function insertionSort(arr, id, side) {
     finishTimer(side);
 }
 
-// Selection Sort
 async function selectionSort(arr, id, side) {
     for (let i = 0; i < arr.length; i++) {
         let min = i;
@@ -261,7 +262,6 @@ async function selectionSort(arr, id, side) {
     finishTimer(side);
 }
 
-// Heap Sort
 async function heapSort(arr, id, side) {
 
     async function heapify(n, i) {
@@ -284,14 +284,13 @@ async function heapSort(arr, id, side) {
 
     for (let i = n-1; i > 0; i--) {
         [arr[0], arr[i]] = [arr[i], arr[0]];
-        await updateBars(id, arr, 0, i);
+        await updateBars(id, arr, null, i);
         await heapify(i, 0);
     }
 
     finishTimer(side);
 }
 
-// Merge Sort
 async function mergeSort(arr, id, side) {
 
     async function sortRange(start, end) {
@@ -318,11 +317,14 @@ async function mergeSort(arr, id, side) {
     finishTimer(side);
 }
 
-// Quick Sort with pivot highlighting
+// ------------------------------------------------------
+// QUICK SORT (Pivot highlighting fixed)
+// ------------------------------------------------------
 async function quickSort(arr, id, side, low=0, high=arr.length-1) {
-    if (low >= high) { 
+
+    if (low >= high) {
         if (low === 0 && high === arr.length-1) finishTimer(side);
-        return; 
+        return;
     }
 
     let pivotIndex = Math.floor((low+high)/2);
@@ -358,7 +360,7 @@ async function quickSort(arr, id, side, low=0, high=arr.length-1) {
 }
 
 // ------------------------------------------------------
-// RUN BOTH SORTS
+// START BOTH SORTS
 // ------------------------------------------------------
 function startBoth() {
     animationSpeed = Number(speed.value);
@@ -383,8 +385,9 @@ function startBoth() {
     algos[rightAlgo.value](R, "right", "right");
 }
 
+// Initialize
 shuffleBars();
-</script>
 
+</script>
 </body>
 </html>
